@@ -1,13 +1,13 @@
 # Privacy Impact Assessment: Philippine typhoon impacts dataset
 
-Version 1 · 2026-11-11 · Owner: Kurt (project maintainer) · Review: yearly, or when sources, scope or purpose change (NPC Advisory 2026-01, Sec 3F).
+Version 1.1 · 2026-11-21 · Owner: Kurt (project maintainer) · Review: yearly, or when sources, scope or purpose change (NPC Advisory 2026-01, Sec 3F).
 
 Prepared with Claude's help. It records our reasoning and is not legal advice.
 
 ## 1. What we do, and why
 - **Purpose:** build an open, town-level history of typhoon and monsoon impacts in the Philippines (affected families and persons, displaced people, damaged houses, aid cost) for research, planning and public understanding.
 - **Source:** DSWD DROMIC reports (dromic.dswd.gov.ph, linked Google Docs). About 2,750 report files covering 2017 to now, downloaded once, then only new reports. The HDX "Philippines Typhoon Impact Data 2014–2020" file (aggregate counts only) is used only to check our 2018–2020 numbers and is not published.
-- **What we keep for publishing:** numbers per region, province and town, with official PSGC place codes and a link to the source report. No names, ages, addresses or barangay-level rows.
+- **What we keep for publishing:** town-level numbers, with region and province names, official PSGC place codes and a link to the source report. No names, ages, addresses or barangay-level rows.
 
 ## 2. What personal data is involved
 - The **number tables we publish** are aggregate counts. They are not personal information (DPA Sec 3(g); NPC AO 2017-027).
