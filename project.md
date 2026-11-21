@@ -31,7 +31,7 @@ Free tiers only: nothing may cost money.
 
 | Source | Years | Level | How we get it |
 |---|---|---|---|
-| DSWD DROMIC situation reports (dromic.dswd.gov.ph + linked Google Docs) | 2017 → now | town | Script. robots.txt only blocks `/wp-admin/`. About 143 events and 2,749 report files (`docs/dromic_report_files_2017-2026.json`) |
+| DSWD DROMIC situation reports (dromic.dswd.gov.ph + linked Google Docs) | 2017 → now | town | Script. robots.txt only blocks `/wp-admin/`. 144 events and 2,823 report files on 2026-11-21 (the research list `docs/dromic_report_files_2017-2026.json` had 143 and 2,749 and missed files in combined posts) |
 | HDX "Philippines Typhoon Impact Data 2014–2020" (`data/typhonn-impacts.xlsx`) | 2018–2020 | town? (confirm at milestone 4) | Already downloaded by hand (HDX blocks scripts). **Accuracy check only, never published** (§5.3) |
 | PSA PSGC (official place codes) | current | all | Kurt downloads the .xlsx by hand (psa.gov.ph blocks scripts). Fallback for checks: psgc.gitlab.io/api |
 | PSA census population, poverty stats | latest | town / province | Later, for insights 4–5. Hand download |
@@ -60,7 +60,9 @@ HDX xlsx 2018–20 ─▶ accuracy check against silver (never published)
 ### 5.1 Discover and download
 - List posts per year and keep titles matching `Typhoon|Tropical Storm|Tropical Depression|Southwest Monsoon|Habagat`, excluding "Intertropical". Hazard categories on the site are unreliable.
 - Handle duplicate posts (Karen 2016 is also listed under 2017), combined posts, and events that cross a year.
-- Google links: `docs.google.com/document/d/{id}/export?format=docx` or `drive.google.com/uc?export=download&id={id}`. Some are dead (2017 Jolina, Isang, Bising): mark them failed, don't drop them.
+- Posts are listed from the HTML year pages (`/category/situation-reports/{year}/page/N/`); the WordPress REST API needs a login, so it is not used. The event year comes from the date in the title (category 2016 holds Auring, 07 Jan 2017).
+- Google links: `docs.google.com/document/d/{id}/export?format=docx`, one request per second (Google's robots.txt crawl delay). Drive file links (`/file/d/{id}`, 3 files) are blocked by robots.txt on every download route: status `manual`, Kurt downloads them by hand. 2021 posts wrap DROMIC files in `docs.google.com/viewer?url=…`: unwrap them. Some Google Docs are dead (HTTP 410; 2017 Jolina, Isang, Bising): mark them failed, don't drop them.
+- A downloaded file must start like a PDF, .docx or .doc; anything else (e.g. a Google sign-in page) is marked failed.
 - Politeness: at most 6 parallel requests, 60 s timeout, 3 retries with back-off. Never bypass a block (NPC Advisory 2026-01 Sec 4).
 - A manifest keeps one row per report file (event, report number, date, URL, hash, status). DSWD revises reports for years, so files are re-downloaded and rows are never deleted.
 
@@ -124,4 +126,4 @@ Stop at the end of each one, summarise, and wait for Kurt's review.
 - New dependencies beyond §4.
 - Ambiguous place matches, and events that might be duplicates or combined.
 - Licence: output tables CC BY 4.0 (Kurt, 2026-11-21); code MIT (same as tawad).
-- DROMIC terms of service (not checked yet). Check before the full download in milestone 2.
+- DROMIC terms of service: checked 2026-11-21. DROMIC has no terms page; robots.txt only blocks `/wp-admin/`; the DSWD privacy policy covers visitor data only; government works carry no copyright (IP Code Sec 176).

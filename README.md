@@ -21,4 +21,8 @@ This dataset is built from public DSWD DROMIC situation reports. We extract only
 uv sync
 uv run pytest -q
 uv run sakuna show-config
+uv run sakuna discover     # find events and report files, update raw/manifest.csv
+uv run sakuna download     # download pending files into raw/ (add --refresh to re-check old ones)
 ```
+
+Raw report files stay on your machine (`raw/` is git-ignored) and are never published.
