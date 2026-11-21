@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import http.client
 import logging
+import string
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 
@@ -27,6 +29,8 @@ def get(url: str, settings: Settings, sleep=time.sleep) -> Response:
 
     Raises OSError (or http.client.HTTPException) once the retries run out.
     """
+    # Percent-encode non-ASCII and spaces only (DROMIC file names contain curly quotes).
+    url = urllib.parse.quote(url, safe=string.punctuation)
     req = urllib.request.Request(url, headers={"User-Agent": settings.http_user_agent})
     for attempt in range(settings.request_retries + 1):
         last = attempt == settings.request_retries
