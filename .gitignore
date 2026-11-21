@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Data: never commit. Raw DSWD reports name officials and staff (docs/pia.md).
+raw/
+lake/
+data/
+*.pdf
+*.docx
+*.xlsx
+*.parquet
+*.duckdb
+*.duckdb.wal
+!tests/fixtures/**
+
+# dbt
+transform/target/
+transform/dbt_packages/
+transform/logs/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
