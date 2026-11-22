@@ -1,0 +1,20 @@
+name: sakuna
+version: "0.1.0"
+config-version: 2
+profile: sakuna
+
+# Run from the repo root: uv run dbt build --project-dir transform --profiles-dir transform
+# Paths below are relative to the repo root for that reason.
+vars:
+  bronze_glob: lake/bronze/*.parquet
+  extract_log: lake/bronze/_log.csv
+  manifest: raw/manifest.csv
+
+models:
+  sakuna:
+    staging:
+      +materialized: view
+    silver:
+      +materialized: table
+    gold:
+      +materialized: table

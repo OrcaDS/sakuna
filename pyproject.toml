@@ -5,9 +5,11 @@ description = "Open, town-level history of Philippine typhoon and monsoon impact
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "dbt-core>=1.12.7",
+    "dbt-duckdb>=1.11.1",
     "pdfplumber>=0.11.11",
     "pyarrow>=26.0.1",
-]  # pdfplumber, pyarrow, dbt-core, dbt-duckdb arrive with the milestones that use them (project.md §4)
+]
 
 [project.scripts]
 sakuna = "sakuna.cli:main"

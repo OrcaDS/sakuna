@@ -1,0 +1,31 @@
+version: 2
+
+models:
+  - name: reports
+    description: One row per event × report file that extracted cleanly. A file posted under two events appears once per event.
+    data_tests:
+      - unique_combo:
+          arguments:
+            columns: [event_id, sha256]
+    columns:
+      - name: is_latest
+        description: The report `impacts` uses for this event (terminal, then latest date, then highest number).
+
+  - name: impacts_by_report
+    description: >
+      One row per event × report × place, for every report (not only the latest).
+      CUM columns are cumulative totals; NOW columns are the count on the report date.
+    data_tests:
+      - unique_combo:
+          arguments:
+            columns: [event_id, sha256, level, region, province, name]
+    columns:
+      - name: level
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [total, region, province, town, unknown]
+      - name: has_repeated_rows
+        description: True when DSWD listed this place twice in one table; the rows were added up.
+      - name: n_unreadable
+        description: Cells whose text was not a clean number (e.g. "28,12"); they count as NULL.

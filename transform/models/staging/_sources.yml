@@ -1,0 +1,18 @@
+version: 2
+
+sources:
+  - name: lake
+    description: Local files made by `sakuna discover`, `download` and `extract`. Never committed.
+    tables:
+      - name: bronze
+        description: One row per table cell, text exactly as read (project.md §5.2).
+        meta:
+          external_location: "read_parquet('{{ var('bronze_glob') }}')"
+      - name: extract_log
+        description: Extraction status per report file (ok / empty / failed).
+        meta:
+          external_location: "read_csv('{{ var('extract_log') }}', all_varchar = true)"
+      - name: manifest
+        description: One row per report file linked from a DROMIC post; rows are never deleted.
+        meta:
+          external_location: "read_csv('{{ var('manifest') }}', all_varchar = true)"
