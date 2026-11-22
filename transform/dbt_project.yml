@@ -10,6 +10,18 @@ vars:
   extract_log: lake/bronze/_log.csv
   manifest: raw/manifest.csv
 
+seeds:
+  sakuna:
+    # psgc.csv is made by `uv run sakuna psgc <PSA xlsx>`; codes keep their leading zeros.
+    psgc:
+      +column_types: {psgc_code: varchar, region_code: varchar, province_code: varchar, population_2024: bigint}
+    region_aliases:
+      +column_types: {region_code: varchar}
+    group_provinces:
+      +column_types: {province_code: varchar}
+    province_moves:
+      +column_types: {province_code: varchar, old_region_code: varchar}
+
 models:
   sakuna:
     staging:

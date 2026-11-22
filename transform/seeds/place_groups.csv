@@ -1,0 +1,10 @@
+dswd_name,level,why
+Metro Manila,group,NCR sub-header - its cities have no province
+Maguindanao,group,split in 2022 into del Norte and del Sur - towns are matched within BARMM
+NIR 6,group,NIR towns formerly in Region VI
+NIR 7,group,NIR towns formerly in Region VII
+Special Geographic Areas (SGA) of BARMM,group,PSGC has no province for the SGA
+Province,other,aid line for the provincial government (cost tables)
+P rovince,other,aid line for the provincial government (cost tables)
+Legislator,other,aid line from a legislator (cost tables)
+Basilan (Isabela City),group,sub-header above City of Isabela (Basilan)

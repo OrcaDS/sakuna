@@ -22,3 +22,6 @@ select
 from manifest as m
 inner join extracted as e on e.sha256 = m.sha256
 where e.extract_status = 'ok'
+    -- "Effects of Southwest Monsoon in Mindanao [22 Jul 2026][MERGED TC Kiyapo]" holds only Kiyapo's
+    -- Report 1; DSWD merged the event, so the file counts under Kiyapo alone (Kurt, 2026-11-23)
+    and m.event_title not like '%[MERGED%'

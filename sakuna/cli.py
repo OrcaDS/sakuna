@@ -5,8 +5,9 @@ from __future__ import annotations
 import argparse
 import logging
 from datetime import date
+from pathlib import Path
 
-from sakuna import discover, download, extract, manifest
+from sakuna import discover, download, extract, manifest, psgc
 from sakuna.settings import load_settings
 
 logger = logging.getLogger("sakuna")
@@ -24,6 +25,8 @@ def main(argv: list[str] | None = None) -> int:
     ex = sub.add_parser("extract", help="read number tables from downloaded files into bronze")
     ex.add_argument("--force", action="store_true", help="also re-extract files already done")
     ex.add_argument("--limit", type=int, help="extract at most this many files")
+    ps = sub.add_parser("psgc", help="turn PSA's PSGC .xlsx into transform/seeds/psgc.csv")
+    ps.add_argument("xlsx", type=Path, help="PSGC publication datafile downloaded from psa.gov.ph")
     args = parser.parse_args(argv)
 
     settings = load_settings()
@@ -45,6 +48,9 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "extract":
         counts = extract.extract(settings, force=args.force, limit=args.limit)
         logger.info("bronze status: %s; log: %s", dict(counts), extract.bronze_root(settings))
+    elif args.command == "psgc":
+        out = Path("transform/seeds/psgc.csv")
+        logger.info("%d places → %s", psgc.write_seed(args.xlsx, out), out)
     return 0
 
 

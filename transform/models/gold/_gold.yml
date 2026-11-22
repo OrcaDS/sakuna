@@ -18,13 +18,13 @@ models:
     data_tests:
       - unique_combo:
           arguments:
-            columns: [event_id, sha256, level, region, province, name]
+            columns: [event_id, sha256, level, region_code, province_code, psgc_code, dswd_name]
     columns:
       - name: level
         data_tests:
           - accepted_values:
               arguments:
-                values: [total, region, province, town, unknown]
+                values: [total, region, province, town, group, other]
       - name: has_repeated_rows
         description: True when DSWD listed this place twice in one table; the rows were added up.
       - name: n_unreadable

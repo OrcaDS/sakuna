@@ -1,34 +1,16 @@
--- One row per non-empty bronze cell, typed, with region/province context and the gold metric it feeds.
-with cells as (
-    select *
-    from {{ source('lake', 'bronze') }}
-),
-
-context as (
-    select
-        *,
-        last_value(case when level = 'region' then name end ignore nulls) over w as region,
-        last_value(case when level = 'province' then name end ignore nulls) over w as province_row
-    from cells
-    window w as (partition by sha256, kind order by row_no rows between unbounded preceding and current row)
-),
-
-keyed as (
+-- One row per non-empty bronze cell, typed, with the gold metric it feeds.
+-- Which place a row is (level, PSGC code) is decided in silver `table_rows`.
+with keyed as (
     select
         sha256,
         kind,
         row_no,
-        -- NCR cities sit directly under the region and come out of bronze as "province".
-        case when level = 'province' and region ilike 'NCR%' then 'town' else level end as level,
-        name,
-        region,
-        case when level = 'town' then province_row end as province,
         "column" as header,
         trim(value) as raw_value,
         regexp_replace(upper("column"), '[^A-Z]', '', 'g') as p,
         -- measure words live after the table title; Henry 2022's title holds "Families Persons CUM NOW"
         regexp_replace(upper(coalesce(nullif(regexp_extract("column", ' > (.*)$', 1), ''), '')), '[^A-Z]', '', 'g') as tail
-    from context
+    from {{ source('lake', 'bronze') }}
     where trim(value) <> ''
 ),
 
@@ -61,10 +43,6 @@ select
     sha256,
     kind,
     row_no,
-    level,
-    name,
-    region,
-    province,
     header,
     raw_value,
     case
@@ -76,7 +54,7 @@ select
         else base_metric
     end as metric,
     -- Clean numbers only: "1,017" / "1017" / "1,017.50" (a trailing * is a footnote mark); "-" is 0.
-    -- Anything else (typos like "28,12") becomes NULL and is listed by the odd_values test.
+    -- Anything else (typos like "28,12") becomes NULL and is counted in n_unreadable.
     case
         when raw_value = '-' then 0
         when regexp_full_match(raw_value, '(\d{1,3}(,\d{3})*|\d+)(\.\d+)?\*?')
