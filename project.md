@@ -67,12 +67,14 @@ HDX xlsx 2018–20 ─▶ accuracy check against silver (never published)
 - A manifest keeps one row per report file (event, report number, date, URL, hash, status). DSWD revises reports for years, so files are re-downloaded and rows are never deleted.
 
 ### 5.2 Extract → bronze
-- Formats: 2017 Google Docs only; 2018 mixed; 2019–21 mostly .docx; 2022+ PDF.
-- Five tables per report: affected, displaced inside ECs, displaced outside ECs, damaged houses, cost of assistance. Town rows sit in annexes (2017 "Annex A–D"; 2018 Ompong unlabelled after the signatory, with extra columns and cost split in 2 tables; 2019–20 the main tables are already town-level).
-- **Match tables and columns by header keyword, never by position.** Headers span 2–3 rows. If several tables match, take the one with the most rows.
-- Row levels: GRAND TOTAL → region → province (first cell spans 2 columns) → town (empty first cell, name in the second). NCR cities sit directly under the region.
-- Bronze keeps cell text exactly as read; typing happens in silver.
-- The extractor reads tables only. It never stores free text (names live there).
+- Formats (checked 2026-11-21): two file types, told apart by their first bytes, not the file name (some names were cut before the extension). **.docx** 2017–2022 (1,014 files) and **PDF** 2021–2026 (1,820 files); no old .doc. Within each type the layout barely changes, so there are two readers (`docx_reader`, `pdf_reader`) sharing one set of header rules (`extract`).
+- "Preparedness for Response" reports (written before landfall: pre-emptive evacuations, not impacts) are skipped (Kurt, 2026-11-21): 112 files; 7 events have only these.
+- Five tables per report: affected, displaced inside ECs, displaced outside ECs, damaged houses, cost of assistance. 2017–2018 put inside and outside ECs in one table (`displaced`). Town rows sit in annexes (2017 "Annex A–D"; Ompong with extra columns such as 2015 population and "returned home"; 2019–20 the main tables are already town-level).
+- **Match tables and columns by header keyword, never by position.** Headers span 2–4 rows (CUM / NOW columns). A table counts only if a header cell starts with REGION (the place column), which keeps free-text tables out. If several copies of a table match, take the one with the most rows.
+- PDF tables run over many pages: pieces of the same kind are joined until a new GRAND TOTAL row starts another copy. Headers are usually repeated per page; a page without one continues the table before it.
+- Row levels: GRAND TOTAL → region → province → town. Word: a province fills the first name cell (spanning 2 columns), a town leaves it empty. PDF: regions and provinces are bold (and shaded), towns are not. Region vs province is decided by name (REGION …, NCR, CAR, CARAGA, MIMAROPA, CALABARZON, BARMM, NIR). NCR cities sit directly under the region and come out as "province": silver fixes that.
+- Bronze: one Parquet file per report (`lake/bronze/<sha256>.parquet`), one row per table cell: sha256, kind, row_no, level, name, column (header path, e.g. `NUMBER OF AFFECTED > Families`), value. Cell text is kept exactly as read; typing and the header → gold column mapping happen in silver. `lake/bronze/_log.csv` lists each file's status (ok / empty / failed), row counts per table and dropped rows.
+- The extractor reads tables only. It never stores free text (names live there): rows with no number cells (table notes) are skipped, and a row with a value longer than 40 characters or a name longer than 100 is dropped and counted.
 
 ### 5.3 Silver and gold (dbt)
 - Numbers: `1,017` / `1017` → 1017; `-` → 0. Empty → NULL.

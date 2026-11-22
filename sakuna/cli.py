@@ -6,7 +6,7 @@ import argparse
 import logging
 from datetime import date
 
-from sakuna import discover, download, manifest
+from sakuna import discover, download, extract, manifest
 from sakuna.settings import load_settings
 
 logger = logging.getLogger("sakuna")
@@ -21,6 +21,9 @@ def main(argv: list[str] | None = None) -> int:
     dl = sub.add_parser("download", help="download pending and failed files in the manifest")
     dl.add_argument("--refresh", action="store_true", help="also re-check downloaded files")
     dl.add_argument("--limit", type=int, help="download at most this many files")
+    ex = sub.add_parser("extract", help="read number tables from downloaded files into bronze")
+    ex.add_argument("--force", action="store_true", help="also re-extract files already done")
+    ex.add_argument("--limit", type=int, help="extract at most this many files")
     args = parser.parse_args(argv)
 
     settings = load_settings()
@@ -39,6 +42,9 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "download":
         counts = download.download(settings, refresh=args.refresh, limit=args.limit)
         logger.info("manifest status: %s", counts)
+    elif args.command == "extract":
+        counts = extract.extract(settings, force=args.force, limit=args.limit)
+        logger.info("bronze status: %s; log: %s", dict(counts), extract.bronze_root(settings))
     return 0
 
 
