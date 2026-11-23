@@ -147,6 +147,7 @@ def test_kind_of_matches_keywords_and_needs_a_region_column():
         == "displaced"
     )
     assert kind_of(["REGION / PROVINCE", "NUMBER OF DISPLACED > OUTSIDE ECs"]) == "outside_ec"
+    assert kind_of(["REGION / PROVINCE", "NO. OF DAMAGE HOUSES > Total"]) == "houses"
     assert kind_of(["OFFICE", "STANDBY FUNDS"]) is None
     assert kind_of(["DATE", "NUMBER OF AFFECTED"]) is None  # no place column: free-text table
 
@@ -174,6 +175,36 @@ def test_select_keeps_longest_run_and_stitches_pages():
     annex3 = Piece([], [(["Villa Tres", "0"], False)])  # header missing on the next page
     out = select([summary, annex1, frame, annex2, annex3])
     assert [len(rows) for _, rows in out["affected"]] == [2, 1, 1]
+
+
+def test_select_headerless_total_table_does_not_continue():
+    paths = ["REGION", "COST OF ASSISTANCE > DSWD"]
+    cost = Piece(paths, [(["GRAND TOTAL", "30"], True), (["Townville", "30"], False)])
+    standby = Piece([], [(["TOTAL", "500"], False), (["DSWD CO", "400"], False)])
+    out = select([cost, standby])
+    assert [len(rows) for _, rows in out["cost"]] == [2]
+
+
+def test_to_cells_cuts_stray_copy_only_when_regions_match_the_total():
+    paths = ["REGION", "OUTSIDE ECs > Families"]
+
+    def rows(*names_values):
+        return [([n, v], n.isupper()) for n, v in names_values]
+
+    stray = Piece(
+        paths,
+        rows(("GRAND TOTAL", "30"), ("REGION I", "10"), ("REGION II", "20"), ("Town", "20"))
+        + rows(("REGION I", "99"), ("Town B", "99")),
+    )
+    cells, counts = to_cells("x", [stray])
+    assert counts["outside_ec"] == 4
+    # regions before the repeat (10) do not reach the total (109): the rest is real
+    real = Piece(
+        paths,
+        rows(("GRAND TOTAL", "109"), ("REGION I", "10"), ("REGION I", "99"), ("Town B", "99")),
+    )
+    cells, counts = to_cells("x", [real])
+    assert counts["outside_ec"] == 4
 
 
 def test_select_stitches_pages_that_repeat_the_grand_total():

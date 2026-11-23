@@ -92,7 +92,7 @@ def kind_of(paths: list[str]) -> str | None:
     found = [
         k
         for k, hit in (
-            ("houses", "DAMAGED HOUSES" in h),
+            ("houses", "HOUSE" in h and "DAMAGE" in h),  # also "NO. OF DAMAGE HOUSES" (2022)
             ("cost", "COST OF ASSISTANCE" in h),
             ("affected", "AFFECTED" in h),
             ("displaced", inside and outside),  # 2017-2018: inside and outside ECs in one table
@@ -108,6 +108,13 @@ def kind_of(paths: list[str]) -> str | None:
 
 def _is_grand_total(piece: Piece) -> bool:
     return any("GRAND TOTAL" in c.upper() for c in piece.rows[0][0][:3])
+
+
+def _starts_total(piece: Piece) -> bool:
+    """A headerless table starting with a TOTAL row is a new table (standby funds after the
+    cost table, 2022), never the next page of the one before."""
+    first = next((c for c in piece.rows[0][0] if c), "").upper()
+    return first.startswith("TOTAL")
 
 
 def _filled(cells: list[str]) -> list[str]:
@@ -140,7 +147,7 @@ def select(pieces: list[Piece]) -> dict[str, list[tuple[list[str], list]]]:
             continue  # header-only boxes (page frames, free-text tables)
         if p.paths:
             kind, paths = kind_of(p.paths), p.paths
-        elif current and len(p.rows[0][0]) == len(current[1]):
+        elif current and len(p.rows[0][0]) == len(current[1]) and not _starts_total(p):
             kind, paths = current
         else:
             kind, paths = None, []
@@ -174,12 +181,46 @@ def level_of(name: str, area: bool) -> str:
     return "town"
 
 
+def _num(v: str) -> float | None:
+    v = v.strip("()*%").replace(",", "")
+    if not v:
+        return None
+    return 0.0 if set(v) == {"-"} else float(v)
+
+
+def _cut_stray_copy(rows: list[tuple[str, str, list]]) -> list[tuple[str, str, list]]:
+    """Some PDFs run a second, headerless copy of a table on from the first, with other numbers
+    (Tino 2025 #3). Cut where a region name comes back with other numbers, but only when the
+    regions before it already add up to the GRAND TOTAL; otherwise the rest is real rows."""
+    total = next((r for r in rows if r[0] == "total"), None)
+    if total is None or not total[2]:
+        return rows
+    col = total[2][0][0]
+
+    def first(r: tuple) -> float | None:
+        return next((_num(v) for p, v in r[2] if p == col), None)
+
+    seen: dict[str, tuple] = {}
+    for i, (level, name, values) in enumerate(rows):
+        if level != "region":
+            continue
+        key = name.upper()
+        if key in seen and seen[key] != tuple(values):
+            regions = sum(first(r) or 0 for r in rows[:i] if r[0] == "region")
+            target = first(total) or 0
+            if abs(regions - target) <= max(1, 0.01 * abs(target)):
+                return rows[:i]
+            return rows
+        seen[key] = tuple(values)
+    return rows
+
+
 def to_cells(sha: str, pieces: list[Piece]) -> tuple[dict[str, list], Counter]:
     """Bronze rows (column-wise) for the selected tables, plus counts per kind and dropped rows."""
     out: dict[str, list] = {c: [] for c in COLUMNS}
     counts: Counter = Counter()
     for kind, parts in select(pieces).items():
-        row_no = 0
+        kept: list[tuple[str, str, list]] = []
         seen: set[tuple] = set()  # 2018 combined tables repeat each region row above its block
         for paths, rows in parts:
             names = name_columns(paths)
@@ -204,12 +245,15 @@ def to_cells(sha: str, pieces: list[Piece]) -> tuple[dict[str, list], Counter]:
                     if key in seen:
                         continue
                     seen.add(key)
-                row_no += 1
-                counts[kind] += 1
-                for path, value in values:
-                    row = (sha, kind, row_no, level, name, path, value)
-                    for col, v in zip(COLUMNS, row, strict=True):
-                        out[col].append(v)
+                kept.append((level, name, values))
+        if kind != "combined":  # combined tables repeat region rows on purpose
+            kept = _cut_stray_copy(kept)
+        for row_no, (level, name, values) in enumerate(kept, 1):
+            counts[kind] += 1
+            for path, value in values:
+                row = (sha, kind, row_no, level, name, path, value)
+                for col, v in zip(COLUMNS, row, strict=True):
+                    out[col].append(v)
     return out, counts
 
 
