@@ -207,6 +207,29 @@ def test_to_cells_cuts_stray_copy_only_when_regions_match_the_total():
     assert counts["outside_ec"] == 4
 
 
+def test_to_cells_joins_a_name_wrapped_around_its_numbers():
+    paths = ["REGION", "NUMBER OF AFFECTED > Families"]
+    piece = Piece(
+        paths,
+        [
+            (["GRAND TOTAL", "30"], True),
+            (["Torrijos", "10"], False),
+            (["Occidental", ""], True),
+            (["", "20"], True),
+            (["Mindoro", ""], True),
+            (["Abra de Ilog", "20"], False),
+            (["Source: DSWD FOs", ""], False),  # a note after a normal row stays out
+        ],
+    )
+    cells, _ = to_cells("x", [piece])
+    assert [(r[3], r[4], r[6]) for r in rows_of(cells)] == [
+        ("total", "GRAND TOTAL", "30"),
+        ("town", "Torrijos", "10"),
+        ("province", "Occidental Mindoro", "20"),
+        ("town", "Abra de Ilog", "20"),
+    ]
+
+
 def test_select_stitches_pages_that_repeat_the_grand_total():
     paths = ["REGION", "NUMBER OF AFFECTED > Families"]
     total, region = (["GRAND TOTAL", "30"], True), (["REGION I", "30"], True)

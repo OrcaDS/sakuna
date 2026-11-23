@@ -224,6 +224,9 @@ def to_cells(sha: str, pieces: list[Piece]) -> tuple[dict[str, list], Counter]:
         # 2018 combined tables list every region under the GRAND TOTAL, then repeat each region
         # row above its block: keep that last copy, so towns stay under their region
         seen: dict[tuple, int] = {}
+        # a name centred over two lines splits into name / numbers with no name / name
+        # (Kristine 2024 cost: "Occidental" · numbers · "Mindoro"): join them into one row
+        head, wrapped = "", None  # name-only line above; area flag of a row that took it
         for paths, rows in parts:
             names = name_columns(paths)
             for cells, area in rows:
@@ -240,7 +243,19 @@ def to_cells(sha: str, pieces: list[Piece]) -> tuple[dict[str, list], Counter]:
                     counts["dropped"] += 1
                     continue
                 if not any(v for _, v in values):
-                    continue  # blank rows and table notes ("Source: DSWD FOs") carry no numbers
+                    # blank rows and table notes ("Source: DSWD FOs") carry no numbers
+                    if wrapped is not None and name and kept[-1] is not None:
+                        _, first, vals = kept[-1]
+                        kept[-1] = (level_of(f"{first} {name}", wrapped), f"{first} {name}", vals)
+                        wrapped = None
+                    else:
+                        head, wrapped = name, None
+                    continue
+                if not name and head:
+                    name, wrapped = head, area
+                else:
+                    wrapped = None
+                head = ""
                 level = level_of(name, area)
                 if level in ("total", "region"):
                     key = (level, name.upper(), tuple(v for _, v in values))

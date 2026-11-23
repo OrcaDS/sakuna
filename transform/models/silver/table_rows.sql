@@ -5,11 +5,14 @@
 --              before 2024), unless bronze says town and the current province has a town of that name
 --              (Quezon, Quezon)
 --   group    : sub-headers with no PSGC code (Metro Manila, Maguindanao before the 2022 split); seed
---   other    : aid lines that are not places (PLGU, Legislator); seed + "PLGU" prefix
+--   other    : aid lines that are not places (PLGU, Legislator, congressional district, unnamed); seed + rules
 --   town     : everything else; matched within its province, then its region, then unique nationwide.
 --              A name with "City" only matches cities and is never a province (Quezon City). No match → NULL psgc_code, never guessed.
 with rows as (
-    select distinct sha256, kind, row_no, level as bronze_level, name
+    -- privacy: cut a legislator's title and name from aid lines ("1st District Nueva Ecija: Cong. X")
+    select distinct
+        sha256, kind, row_no, level as bronze_level,
+        regexp_replace(name, '[\s:,;-]*\b(?i:cong|congressman|congresswoman|rep|hon)\b\.?\s.*$', '') as name
     from {{ source('lake', 'bronze') }}
 ),
 
@@ -34,7 +37,8 @@ keyed as (
         r.*,
         coalesce(a.psgc_key, {{ norm_place('r.name') }}) as k,
         r.name ilike '%city%' as is_city,
-        case when r.name ilike 'PLGU%' then 'other' else g.level end as group_level,
+        -- a row DSWD left unnamed (an aid line under a province) cannot be a town
+        case when r.name = '' or r.name ilike 'PLGU%' or regexp_matches(r.name, '(?i)\bdistrict\b') then 'other' else g.level end as group_level,
         g.group_provinces,
         ra.region_code as own_region_code
     from rows as r

@@ -50,6 +50,15 @@ models:
           arguments:
             columns: [event_id, region_code, province_code, psgc_code, dswd_name]
 
+  - name: unmatched_places
+    description: >
+      One row per town spelling in `impacts` with no PSGC code, and how many events list it.
+      Fix by adding the spelling to seed `place_aliases`.
+    data_tests:
+      - unique_combo:
+          arguments:
+            columns: [region_code, province_code, dswd_name]
+
   - name: event_summary
     description: >
       One row per event: totals summed from `impacts`, next to DSWD's GRAND TOTAL (dswd_ columns)
