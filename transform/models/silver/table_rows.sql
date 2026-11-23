@@ -17,7 +17,12 @@ with rows as (
 ),
 
 aliases as (
-    select {{ norm_place('dswd_name') }} as k, {{ norm_place('psgc_name') }} as psgc_key
+    -- norm_place drops "City of" and brackets, so an alias "City of Viga" would also catch the town Viga
+    -- and "Rizal (Marcos)" every Rizal: such aliases need the city word / bracket text in the row too
+    select
+        {{ norm_place("regexp_replace(dswd_name, '[()]', ' ', 'g')") }} as k,
+        {{ norm_place('psgc_name') }} as psgc_key,
+        dswd_name ilike '%city%' as city_only
     from {{ ref('place_aliases') }}
 ),
 
@@ -42,7 +47,9 @@ keyed as (
         g.group_provinces,
         ra.region_code as own_region_code
     from rows as r
-    left join aliases as a on a.k = {{ norm_place('r.name') }}
+    left join aliases as a
+        on a.k in ({{ norm_place('r.name') }}, {{ norm_place("regexp_replace(r.name, '[()]', ' ', 'g')") }})
+        and (not a.city_only or r.name ilike '%city%')
     left join groups as g on g.k = {{ norm_place('r.name') }}
     left join {{ ref('region_aliases') }} as ra
         on r.bronze_level = 'region'

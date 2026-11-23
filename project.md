@@ -78,24 +78,31 @@ HDX xlsx 2018–20 ─▶ accuracy check against silver (never published)
 
 ### 5.3 Silver and gold (dbt)
 - Numbers: `1,017` / `1017` → 1017; `-` → 0. Empty → NULL.
-- PSGC matching: normalise (accents, "City of", "(capital)", Sta./Sto./Gen.), apply `place_aliases.csv` (seed), then look up the town within its province → region → unique nationwide. The test gets 99.4% matched (`docs/research_scripts/match.py`). Unmatched rows are kept with a NULL code and listed; never guessed.
-- Check that the nationwide fallback never picks the wrong town of the same name (not verified yet).
-- v1 uses the **latest report per event**. All reports are kept, for insight 3 and insight 6.
-- **Accuracy checks** (dbt tests; tolerances set at milestone 4):
-  1. Town rows add up to each report's own province, region and grand totals (every year).
-  2. Our 2018–2020 event totals match the HDX file. A big gap points to a parsing bug.
+- PSGC matching: normalise (accents, "City of", "(capital)", Sta./Sto./Gen.), apply `place_aliases.csv` (seed), then look up the town within its province → region → unique nationwide. An alias whose DSWD spelling contains "City" or brackets applies only to rows that contain them too ("City of Viga" ≠ the town Viga). Unmatched rows are kept with a NULL code and listed in gold `unmatched_places`; never guessed.
+- Fallback check (2026-11-24): region/nationwide matches that land outside the province DSWD lists them under were reviewed; the rest are DSWD layout (missing province header rows, ICCs such as Cotabato City). Known miss: San Isidro, Davao del Norte (renamed Sawata, no old name in PSGC; 7 rows).
+- Row level comes from PSGC, not bold font: total, region, province, town, `group` (sub-headers with no code: Metro Manila, Maguindanao before 2022; seed `place_groups`) and `other` (aid lines, not places: PLGU, "District" rows, legislators' lines, rows DSWD left unnamed). `other` rows stay in `impacts_by_report` but are not towns.
+- Privacy in SQL: a legislator's title and name (Cong./Rep./Hon. …) is cut from aid lines; dbt test `no_official_names` fails if one gets through. Names are never listed in a seed (seeds are public).
+- HUCs and ICCs: DSWD counts them in the province total in some reports and only in the region total in others; checks accept both. `province_code` is PSGC's (HUCs have none); sums use the province DSWD lists the row under.
+- Evacuation columns: DSWD gives CUM (everyone who stayed) and NOW (still there). `impacts_by_report` keeps both; `impacts` and `event_summary` use CUM.
+- One event split over two DROMIC posts (Odette 2021 "archives") is merged by seed `event_merges`.
+- v1 uses the **latest report per event**: terminal report first, then latest date, then highest number. All reports are kept, for insight 3 and insight 6.
+- **Accuracy checks**:
+  1. dbt test `sum_check` (warn): town rows add up to each report's own province, region and grand totals. Remaining gaps are DSWD's own tables (6,587 rows as of 2026-11-24).
+  2. HDX 2018–2020 (done 2026-11-24, `docs/research_scripts/hdx_*.py`): all 11 overlapping typhoons; town rows 99% identical to the same DSWD report; gaps come from HDX using earlier, later-revised reports. No parser bug.
+  3. `event_summary` sits next to DSWD's own GRAND TOTAL: 123/128 events within 1% on affected families. Cost: town sums are lower than DSWD's total in 42 events because aid to provinces and PLGUs is not given per town (in `other` rows, or only in the province total); 32 close exactly with `other` rows, the rest are DSWD-side errors (e.g. Tisoy 2019 Region II row copies one town).
 
 ### 5.4 Gold tables
 
 | Table | One row per | Main columns |
 |---|---|---|
 | `events` | event | event_id, local and international name, type, year, start date, n_reports |
-| `reports` | report file | event_id, report_no, report_date, source_url, is_latest |
-| `impacts` | event × town (latest report) | event_id, psgc_code, region, province, town, affected_brgys, affected_families, affected_persons, inside_ec_count, inside_ec_families, inside_ec_persons, outside_ec_families, outside_ec_persons, houses_totally_damaged, houses_partially_damaged, cost_dswd, cost_lgu, cost_ngo, cost_other, source_url |
-| `impacts_by_report` | event × report × place | same counts as `impacts`, for every report |
-| `event_summary` | event | national totals from `impacts`: the table most people will want |
+| `reports` | report file | event_id, report_no, report_date, is_terminal, source_url, is_latest |
+| `impacts` | event × town (latest report) | event_id, report_no, report_date, psgc_code, region, province, town, dswd_name, match_rule, affected_brgys, affected_families, affected_persons, inside_ec_count, inside_ec_families, inside_ec_persons, outside_ec_families, outside_ec_persons, houses_totally_damaged, houses_partially_damaged, cost_dswd, cost_lgu, cost_ngo, cost_other, cost_total, has_repeated_rows, n_unreadable, source_url |
+| `impacts_by_report` | event × report × place | same counts for every report and every level (total, region, province, town, group, other), with CUM and NOW evacuation columns |
+| `event_summary` | event | national totals from `impacts` next to DSWD's own GRAND TOTAL (`dswd_` columns), n_towns, n_unmatched_towns: the table most people will want |
+| `unmatched_places` | town spelling with no PSGC code | region, province, dswd_name, n_events, example event and URL |
 
-Counts are numbers of families/persons/houses; costs are PHP.
+Counts are numbers of families/persons/houses; costs are PHP. `has_repeated_rows`: DSWD listed the place twice in one table and the rows were added up. `n_unreadable`: cells that were not a clean number (counted as NULL). Town cost sums are lower than the national cost because some aid goes to provinces, not towns (see §5.3).
 
 ## 6. Privacy (from `docs/pia.md`; that file wins)
 - Publish only number tables plus source URLs. Never names, exact ages, addresses or barangay-level rows.
@@ -108,7 +115,7 @@ Counts are numbers of families/persons/houses; costs are PHP.
 ## 7. Publishing
 - GitHub Releases: gold as CSV + Parquet + data dictionary + known gaps, in plain English.
 - Attribution: "Source: DSWD DROMIC situation reports. Cleaned by sakuna. Not an official DSWD product."
-- Known gaps to document: starts in 2017 (for 2014–2016 see the HDX "Philippines Typhoon Impact Data 2014–2020" file), dead 2017 links (Jolina, Isang, Bising), reports revised later (Egay 2023 got its final report in Feb 2026).
+- Known gaps to document: starts in 2017 (for 2014–2016 see the HDX "Philippines Typhoon Impact Data 2014–2020" file), dead 2017 links (Jolina, Isang, Bising), reports revised later (Egay 2023 got its final report in Feb 2026); events DSWD reported only as a region or group total (Isang 2025 BARMM, Sarangani 2024 SGA); DSWD totals that don't match their own rows (Ramon 2019 CAR omits Kalinga, Tisoy 2019 Region II cost, 2017 SW monsoon flood); the 31 unmatched town spellings; aid given to provinces rather than towns.
 - Automation (later): a scheduled GitHub Action checks for new reports during typhoon season. Raw files can't go to a public release; where the scheduled run keeps them is decided at that milestone.
 
 ## 8. Milestones
