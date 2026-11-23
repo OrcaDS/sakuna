@@ -1,4 +1,4 @@
-"""Polite HTTP GET: our User-Agent, a timeout, retries with back-off (project.md §5.1)."""
+"""Polite HTTP GET: our User-Agent, a timeout, retries with back-off."""
 
 from __future__ import annotations
 

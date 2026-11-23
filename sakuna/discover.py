@@ -1,4 +1,4 @@
-"""Discover typhoon/monsoon events and their report files on DROMIC (project.md §5.1).
+"""Discover typhoon/monsoon events and their report files on DROMIC.
 
 Reads only post titles, link URLs and link text. Never the post body text.
 """

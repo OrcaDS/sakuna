@@ -1,4 +1,4 @@
--- One row per town spelling in `impacts` that found no PSGC code (project.md §5: listed, never guessed).
+-- One row per town spelling in `impacts` that found no PSGC code (listed, never guessed).
 -- To fix one, add the spelling to seed `place_aliases`, not here.
 select
     region_code,

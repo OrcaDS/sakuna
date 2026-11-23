@@ -1,4 +1,4 @@
--- Accuracy check 1 (project.md §5.3): each level adds up to the level above, within 1%.
+-- Accuracy check 1: each level adds up to the level above, within 1%.
 -- Warn only: DSWD's own totals are sometimes off (123 files known at M3) and are never fixed.
 --   towns + PLGU lines → the province DSWD lists them under
 --   provinces + towns listed under no province (NCR cities) → their region

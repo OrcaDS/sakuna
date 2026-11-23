@@ -1,4 +1,4 @@
--- One row per event × town, from the event's latest report (project.md §5.4).
+-- One row per event × town, from the event's latest report.
 -- Evacuation counts are the cumulative (CUM) columns: everyone who stayed, not who is still there.
 -- Unmatched towns stay in, with a NULL psgc_code and DSWD's spelling.
 select

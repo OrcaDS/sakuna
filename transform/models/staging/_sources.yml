@@ -5,7 +5,7 @@ sources:
     description: Local files made by `sakuna discover`, `download` and `extract`. Never committed.
     tables:
       - name: bronze
-        description: One row per table cell, text exactly as read (project.md §5.2).
+        description: One row per table cell, text exactly as read.
         meta:
           external_location: "read_parquet('{{ var('bronze_glob') }}')"
       - name: extract_log
