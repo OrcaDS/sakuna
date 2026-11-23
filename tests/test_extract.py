@@ -394,3 +394,25 @@ def test_remap_puts_words_under_shaded_row_columns():
     assert _remap([(330, 380, "1,306,45"), (330, 350, "0.00")], ref)[4] == "1,306,450.00"
     # two whole numbers in one column are never glued together
     assert _remap([(320, 340, "11,986"), (350, 380, "39,014")], ref)[4] == "11,986 39,014"
+
+
+def test_to_cells_combined_keeps_the_region_row_above_its_block():
+    paths = ["REGION", "NUMBER OF AFFECTED > Families", "NO. OF DAMAGED HOUSES > Total"]
+    rows = [
+        (["GRAND TOTAL", "30", "3"], True),
+        (["REGION I", "10", "1"], True),
+        (["REGION III", "20", "2"], True),
+        (["REGION I", "10", "1"], True),
+        (["Townville", "10", "1"], False),
+        (["REGION III", "20", "2"], True),
+        (["Villa Dos", "20", "2"], False),
+    ]
+    cells, _ = to_cells("x", [Piece(paths, rows)])
+    order = list(dict.fromkeys(zip(cells["row_no"], cells["name"], strict=True)))
+    assert [n for _, n in order] == [
+        "GRAND TOTAL",
+        "REGION I",
+        "Townville",
+        "REGION III",
+        "Villa Dos",
+    ]

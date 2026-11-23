@@ -220,8 +220,10 @@ def to_cells(sha: str, pieces: list[Piece]) -> tuple[dict[str, list], Counter]:
     out: dict[str, list] = {c: [] for c in COLUMNS}
     counts: Counter = Counter()
     for kind, parts in select(pieces).items():
-        kept: list[tuple[str, str, list]] = []
-        seen: set[tuple] = set()  # 2018 combined tables repeat each region row above its block
+        kept: list = []
+        # 2018 combined tables list every region under the GRAND TOTAL, then repeat each region
+        # row above its block: keep that last copy, so towns stay under their region
+        seen: dict[tuple, int] = {}
         for paths, rows in parts:
             names = name_columns(paths)
             for cells, area in rows:
@@ -243,9 +245,12 @@ def to_cells(sha: str, pieces: list[Piece]) -> tuple[dict[str, list], Counter]:
                 if level in ("total", "region"):
                     key = (level, name.upper(), tuple(v for _, v in values))
                     if key in seen:
-                        continue
-                    seen.add(key)
+                        if kind != "combined":
+                            continue
+                        kept[seen[key]] = None
+                    seen[key] = len(kept)
                 kept.append((level, name, values))
+        kept = [r for r in kept if r is not None]
         if kind != "combined":  # combined tables repeat region rows on purpose
             kept = _cut_stray_copy(kept)
         for row_no, (level, name, values) in enumerate(kept, 1):
