@@ -1,0 +1,68 @@
+version: 2
+
+models:
+  - name: reports
+    description: One row per event × report file that extracted cleanly. A file posted under two events appears once per event.
+    data_tests:
+      - unique_combo:
+          arguments:
+            columns: [event_id, sha256]
+    columns:
+      - name: is_latest
+        description: The report `impacts` uses for this event (terminal, then latest date, then highest number).
+
+  - name: impacts_by_report
+    description: >
+      One row per event × report × place, for every report (not only the latest).
+      CUM columns are cumulative totals; NOW columns are the count on the report date.
+    data_tests:
+      - unique_combo:
+          arguments:
+            columns: [event_id, sha256, level, region_code, province_code, psgc_code, dswd_name]
+    columns:
+      - name: level
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [total, region, province, town, group, other]
+      - name: has_repeated_rows
+        description: True when DSWD listed this place twice in one table; the rows were added up.
+      - name: n_unreadable
+        description: Cells whose text was not a clean number (e.g. "28,12"); they count as NULL.
+
+  - name: events
+    description: One row per event (DROMIC post). Name, type and start date are read from the post title and are NULL when the title does not give them.
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: event_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [super typhoon, typhoon, severe tropical storm, tropical storm, tropical depression, tropical cyclone, monsoon, other]
+
+  - name: impacts
+    description: >
+      One row per event × town from the event's latest report. Evacuation counts are the
+      cumulative (CUM) columns. Unmatched towns have a NULL psgc_code and keep DSWD's spelling.
+    data_tests:
+      - unique_combo:
+          arguments:
+            columns: [event_id, region_code, province_code, psgc_code, dswd_name]
+
+  - name: unmatched_places
+    description: >
+      One row per town spelling in `impacts` with no PSGC code, and how many events list it.
+      Fix by adding the spelling to seed `place_aliases`.
+    data_tests:
+      - unique_combo:
+          arguments:
+            columns: [region_code, province_code, dswd_name]
+
+  - name: event_summary
+    description: >
+      One row per event: totals summed from `impacts`, next to DSWD's GRAND TOTAL (dswd_ columns)
+      from the same report. A gap means DSWD's total and its town rows disagree, or a town table is missing.
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]

@@ -1,0 +1,7 @@
+sakuna:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: lake/sakuna.duckdb  # git-ignored (lake/)
+      threads: 4

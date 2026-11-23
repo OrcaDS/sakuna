@@ -26,3 +26,5 @@ jobs:
         run: uv run pytest -q
       - name: CLI smoke test
         run: uv run sakuna show-config
+      - name: dbt parse (models, tests, seeds compile; no data needed)
+        run: uv run dbt parse --project-dir transform --profiles-dir transform

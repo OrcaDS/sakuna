@@ -127,7 +127,8 @@ def read_pdf(path: Path) -> list[Piece]:
                 else:
                     paths = []
                     # a continuation page: same table, same x-positions, maybe a coarser grid
-                    if last and abs(last[0] - x0) < 3 and abs(last[1] - x1) < 3:
+                    # or an empty strip left of the name column (its words map to the nearest)
+                    if last and x0 < last[0] + 3 and abs(last[1] - x1) < 3:
                         ref = last[2]
                 rows = []
                 for i in range(h, len(cells)):

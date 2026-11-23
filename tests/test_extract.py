@@ -147,6 +147,7 @@ def test_kind_of_matches_keywords_and_needs_a_region_column():
         == "displaced"
     )
     assert kind_of(["REGION / PROVINCE", "NUMBER OF DISPLACED > OUTSIDE ECs"]) == "outside_ec"
+    assert kind_of(["REGION / PROVINCE", "NO. OF DAMAGE HOUSES > Total"]) == "houses"
     assert kind_of(["OFFICE", "STANDBY FUNDS"]) is None
     assert kind_of(["DATE", "NUMBER OF AFFECTED"]) is None  # no place column: free-text table
 
@@ -174,6 +175,59 @@ def test_select_keeps_longest_run_and_stitches_pages():
     annex3 = Piece([], [(["Villa Tres", "0"], False)])  # header missing on the next page
     out = select([summary, annex1, frame, annex2, annex3])
     assert [len(rows) for _, rows in out["affected"]] == [2, 1, 1]
+
+
+def test_select_headerless_total_table_does_not_continue():
+    paths = ["REGION", "COST OF ASSISTANCE > DSWD"]
+    cost = Piece(paths, [(["GRAND TOTAL", "30"], True), (["Townville", "30"], False)])
+    standby = Piece([], [(["TOTAL", "500"], False), (["DSWD CO", "400"], False)])
+    out = select([cost, standby])
+    assert [len(rows) for _, rows in out["cost"]] == [2]
+
+
+def test_to_cells_cuts_stray_copy_only_when_regions_match_the_total():
+    paths = ["REGION", "OUTSIDE ECs > Families"]
+
+    def rows(*names_values):
+        return [([n, v], n.isupper()) for n, v in names_values]
+
+    stray = Piece(
+        paths,
+        rows(("GRAND TOTAL", "30"), ("REGION I", "10"), ("REGION II", "20"), ("Town", "20"))
+        + rows(("REGION I", "99"), ("Town B", "99")),
+    )
+    cells, counts = to_cells("x", [stray])
+    assert counts["outside_ec"] == 4
+    # regions before the repeat (10) do not reach the total (109): the rest is real
+    real = Piece(
+        paths,
+        rows(("GRAND TOTAL", "109"), ("REGION I", "10"), ("REGION I", "99"), ("Town B", "99")),
+    )
+    cells, counts = to_cells("x", [real])
+    assert counts["outside_ec"] == 4
+
+
+def test_to_cells_joins_a_name_wrapped_around_its_numbers():
+    paths = ["REGION", "NUMBER OF AFFECTED > Families"]
+    piece = Piece(
+        paths,
+        [
+            (["GRAND TOTAL", "30"], True),
+            (["Torrijos", "10"], False),
+            (["Occidental", ""], True),
+            (["", "20"], True),
+            (["Mindoro", ""], True),
+            (["Abra de Ilog", "20"], False),
+            (["Source: DSWD FOs", ""], False),  # a note after a normal row stays out
+        ],
+    )
+    cells, _ = to_cells("x", [piece])
+    assert [(r[3], r[4], r[6]) for r in rows_of(cells)] == [
+        ("total", "GRAND TOTAL", "30"),
+        ("town", "Torrijos", "10"),
+        ("province", "Occidental Mindoro", "20"),
+        ("town", "Abra de Ilog", "20"),
+    ]
 
 
 def test_select_stitches_pages_that_repeat_the_grand_total():
@@ -236,6 +290,24 @@ def test_pdf_reader_stitches_pages(tmp_path):
     cells, counts = to_cells("abc", extract.read_file(f))
     check_affected(cells)
     assert counts == {"affected": 5}
+
+
+def test_pdf_reader_continuation_page_wider_on_the_left(tmp_path):
+    # Agaton 2022 #46: a continuation page adds an empty strip left of the name column.
+    # It (and every page after it) used to be dropped for not matching the column count.
+    def shift(cells):
+        return [(r, c + 1, cs, rs, t, b) for r, c, cs, rs, t, b in cells]
+
+    wide = [(r, 0, 1, 1, "", False) for r in range(3)] + shift(
+        _pdf_rows(0, [("Villa Dos", False, "5", "-"), ("Villa Tres", False, "5", "-")])
+    )
+    wide += [(3, 0, 1, 1, "", False)] + shift(_pdf_rows(3, [("Villa Cuatro", False, "0", "-")]))
+    last = shift(_pdf_rows(0, [("Villa Cinco", False, "0", "-")]))
+    f = make_pdf(tmp_path / "r.pdf", [shift(PDF_PAGE1), wide, last])
+    cells, counts = to_cells("abc", extract.read_file(f))
+    assert counts == {"affected": 8}
+    names = [r[4] for r in rows_of(cells) if r[5] == "NUMBER OF AFFECTED > Families"]
+    assert names[-4:] == ["Villa Dos", "Villa Tres", "Villa Cuatro", "Villa Cinco"]
 
 
 def test_extract_run_skips_preparedness_and_logs(tmp_path, monkeypatch):
@@ -345,3 +417,25 @@ def test_remap_puts_words_under_shaded_row_columns():
     assert _remap([(330, 380, "1,306,45"), (330, 350, "0.00")], ref)[4] == "1,306,450.00"
     # two whole numbers in one column are never glued together
     assert _remap([(320, 340, "11,986"), (350, 380, "39,014")], ref)[4] == "11,986 39,014"
+
+
+def test_to_cells_combined_keeps_the_region_row_above_its_block():
+    paths = ["REGION", "NUMBER OF AFFECTED > Families", "NO. OF DAMAGED HOUSES > Total"]
+    rows = [
+        (["GRAND TOTAL", "30", "3"], True),
+        (["REGION I", "10", "1"], True),
+        (["REGION III", "20", "2"], True),
+        (["REGION I", "10", "1"], True),
+        (["Townville", "10", "1"], False),
+        (["REGION III", "20", "2"], True),
+        (["Villa Dos", "20", "2"], False),
+    ]
+    cells, _ = to_cells("x", [Piece(paths, rows)])
+    order = list(dict.fromkeys(zip(cells["row_no"], cells["name"], strict=True)))
+    assert [n for _, n in order] == [
+        "GRAND TOTAL",
+        "REGION I",
+        "Townville",
+        "REGION III",
+        "Villa Dos",
+    ]

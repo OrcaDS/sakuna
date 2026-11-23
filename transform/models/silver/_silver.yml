@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: table_rows
+    description: One row per bronze table row, with its level and PSGC code decided from the PSGC list.
+    data_tests:
+      - unique_combo:
+          arguments:
+            columns: [sha256, kind, row_no]
+    columns:
+      - name: level
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [total, region, province, town, group, other]
+      - name: match_rule
+        description: How a town found its PSGC code (province, region, nationwide) or 'unmatched'.
+
+  - name: place_metrics
+    description: One row per report file × place × metric, after choosing between duplicate tables.
+    data_tests:
+      - unique_combo:
+          arguments:
+            columns: [sha256, level, region_code, province_code, psgc_code, unmatched_name, metric]
