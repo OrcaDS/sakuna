@@ -238,6 +238,24 @@ def test_pdf_reader_stitches_pages(tmp_path):
     assert counts == {"affected": 5}
 
 
+def test_pdf_reader_continuation_page_wider_on_the_left(tmp_path):
+    # Agaton 2022 #46: a continuation page adds an empty strip left of the name column.
+    # It (and every page after it) used to be dropped for not matching the column count.
+    def shift(cells):
+        return [(r, c + 1, cs, rs, t, b) for r, c, cs, rs, t, b in cells]
+
+    wide = [(r, 0, 1, 1, "", False) for r in range(3)] + shift(
+        _pdf_rows(0, [("Villa Dos", False, "5", "-"), ("Villa Tres", False, "5", "-")])
+    )
+    wide += [(3, 0, 1, 1, "", False)] + shift(_pdf_rows(3, [("Villa Cuatro", False, "0", "-")]))
+    last = shift(_pdf_rows(0, [("Villa Cinco", False, "0", "-")]))
+    f = make_pdf(tmp_path / "r.pdf", [shift(PDF_PAGE1), wide, last])
+    cells, counts = to_cells("abc", extract.read_file(f))
+    assert counts == {"affected": 8}
+    names = [r[4] for r in rows_of(cells) if r[5] == "NUMBER OF AFFECTED > Families"]
+    assert names[-4:] == ["Villa Dos", "Villa Tres", "Villa Cuatro", "Villa Cinco"]
+
+
 def test_extract_run_skips_preparedness_and_logs(tmp_path, monkeypatch):
     raw = tmp_path / "raw"
     (raw / "ev").mkdir(parents=True)

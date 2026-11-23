@@ -1,23 +1,31 @@
 -- Accuracy check 1 (project.md §5.3): each level adds up to the level above, within 1%.
 -- Warn only: DSWD's own totals are sometimes off (123 files known at M3) and are never fixed.
---   towns + PLGU lines → the province DSWD lists them under (HUCs included, unlike PSGC)
+--   towns + PLGU lines → the province DSWD lists them under
 --   provinces + towns listed under no province (NCR cities) → their region
 --   regions → GRAND TOTAL
+-- HUCs (no PSGC province) listed under a province: DSWD counts them in the province total in
+-- some reports and only in the region total in others, so both readings pass.
+-- shortcut: "either" is per province / region, not per HUC; tighten if mixed cases matter.
 -- Group rows (Metro Manila, Maguindanao) are sub-headers and are left out of every sum.
 {{ config(severity = 'warn') }}
 
 with p as (
-    select * from {{ ref('place_metrics') }} where value is not null
+    select *, level in ('town', 'other') and province_code is null and dswd_parent_code is not null as is_huc
+    from {{ ref('place_metrics') }} where value is not null
 ),
 
 parts as (
-    select sha256, 'town>province' as check_name, dswd_parent_code as parent_code, metric, sum(value) as part_sum
+    select
+        sha256, 'town>province' as check_name, dswd_parent_code as parent_code, metric,
+        sum(value) as part_sum, sum(value) filter (where not is_huc) as alt_sum
     from p where level in ('town', 'other') and dswd_parent_code is not null group by all
     union all
-    select sha256, 'province>region', region_code, metric, sum(value)
-    from p where level = 'province' or (level in ('town', 'other') and dswd_parent_code is null) group by all
+    select
+        sha256, 'province>region', region_code, metric,
+        sum(value) filter (where not is_huc), sum(value)
+    from p where level = 'province' or (level in ('town', 'other') and (dswd_parent_code is null or is_huc)) group by all
     union all
-    select sha256, 'region>total', 'total', metric, sum(value)
+    select sha256, 'region>total', 'total', metric, sum(value), sum(value)
     from p where level = 'region' group by all
 ),
 
@@ -36,4 +44,5 @@ inner join parents
         when 'town>province' then 'province'
         when 'province>region' then 'region'
         else 'total' end
-where abs(parts.part_sum - parents.parent_value) > greatest(1, 0.01 * abs(parents.parent_value))
+where abs(coalesce(parts.part_sum, 0) - parents.parent_value) > greatest(1, 0.01 * abs(parents.parent_value))
+    and abs(coalesce(parts.alt_sum, 0) - parents.parent_value) > greatest(1, 0.01 * abs(parents.parent_value))
