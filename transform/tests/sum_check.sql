@@ -3,15 +3,20 @@
 --   towns + PLGU lines → the province DSWD lists them under
 --   provinces + towns listed under no province (NCR cities) → their region
 --   regions → GRAND TOTAL
--- HUCs (no PSGC province) listed under a province: DSWD counts them in the province total in
+-- HUCs (no PSGC province) and ICCs (Santiago, Naga, Ormoc, Dagupan, Cotabato) listed under a province: DSWD counts them in the province total in
 -- some reports and only in the region total in others, so both readings pass.
 -- shortcut: "either" is per province / region, not per HUC; tighten if mixed cases matter.
 -- Group rows (Metro Manila, Maguindanao) are sub-headers and are left out of every sum.
 {{ config(severity = 'warn') }}
 
 with p as (
-    select *, level in ('town', 'other') and province_code is null and dswd_parent_code is not null as is_huc
-    from {{ ref('place_metrics') }} where value is not null
+    select
+        pm.*,
+        pm.level in ('town', 'other') and pm.dswd_parent_code is not null
+        and (pm.province_code is null or s.city_class is not distinct from 'ICC') as is_huc
+    from {{ ref('place_metrics') }} as pm
+    left join {{ ref('psgc') }} as s on s.psgc_code = pm.psgc_code
+    where pm.value is not null
 ),
 
 parts as (
