@@ -9,6 +9,8 @@ from pathlib import Path
 
 import duckdb
 
+from sakuna.psgc import _sheet_rows  # stdlib .xlsx reader
+
 sys.stdout.reconfigure(encoding="utf-8")
 con = duckdb.connect("lake/sakuna.duckdb", read_only=True)
 
@@ -247,10 +249,55 @@ md += [
         [float(v) for _, v, _ in aid],
         "PHP",
     ),
-    "",
-    "Poverty comparison: still to do. It needs PSA's regional poverty incidence table, "
-    "which has to be downloaded by hand (psa.gov.ph blocks scripts).",
 ]
+# PSA poverty workbook (hand download, data/ is git-ignored). Table 1, columns F/G = 2023/2025
+# poverty incidence among families; region rows are named like DSWD's, so reg() matches them.
+pov_xlsx = next(Path("data").glob("*Full Year Official Poverty Statistics*.xlsx"), None)
+if pov_xlsx is None:
+    md += ["", "Poverty comparison: download PSA's full-year poverty statistics into data/."]
+else:
+    con.execute("create temp table pov (region varchar, p23 double, p25 double)")
+    con.executemany(
+        "insert into pov values (reg(?), try_cast(? as double), try_cast(? as double))",
+        [
+            (r["A"], r.get("F"), r.get("G"))
+            for r in _sheet_rows(pov_xlsx, "tab1")
+            if "Region" in r.get("A", "") and len(r["A"]) < 60  # region rows, not footnotes
+        ],
+    )
+    cmp = rows("""
+    with a as (
+      select reg(region) region, sum(cost_total) / sum(affected_families) per_fam
+      from impacts_by_report
+      where level = 'region' and is_latest and affected_families > 0 group by 1
+    )
+    select a.region, a.per_fam, p.p23, p.p25,
+           rank() over (order by p.p23 desc) pov_rank, rank() over (order by a.per_fam desc) aid_rank
+    from a join pov p using (region) order by p.p23 desc
+    """)
+    rho = one(f"""
+    select corr(pov_rank, aid_rank) from (select unnest({[r[4] for r in cmp]}) pov_rank,
+                                                 unnest({[r[5] for r in cmp]}) aid_rank)
+    """)[0]
+    poorest = ", ".join(r[0] for r in cmp[:4])
+    md += [
+        "",
+        "Next to poverty: PSA's poverty incidence among families (share of families below "
+        f"the poverty line), 2023 and 2025, from `{pov_xlsx.name}` (PSA, table 1). Regions "
+        "are sorted poorest first.",
+        "",
+        table(
+            ["Region", "Aid per affected family (PHP)", "Poor families 2023", "2025"],
+            [(r, fmt(a), f"{p23:.1f}%", f"{p25:.1f}%") for r, a, p23, p25, _, _ in cmp],
+        ),
+        "",
+        f"Aid per family does not follow poverty (rank correlation {rho:+.2f} across "
+        f"{len(cmp)} regions; 0 = no relation, +1 = the poorest regions always get the "
+        f"most). The four poorest regions in 2023 ({poorest}) are spread across the aid "
+        "ranking. Aid depends on many things this table does not show: storm strength, "
+        "how long people stayed in ECs, prices and when the event happened. Treat this as "
+        "a description, not a judgement.",
+    ]
 
 # 5. Share of town population affected ---------------------------------------------
 share_sql = """
@@ -359,6 +406,7 @@ md += [
     "---",
     "Source: DSWD DROMIC situation reports. Cleaned by sakuna. Not an official DSWD "
     "product.",
+    "Population (2024 census) and poverty statistics: Philippine Statistics Authority (PSA).",
     "",
 ]
 Path("docs/insights.md").write_text("\n".join(md), encoding="utf-8", newline="\n")

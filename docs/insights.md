@@ -90,7 +90,30 @@ xychart-beta horizontal
   bar [2198.87, 1599.89, 1594.84, 1016.58, 991.17, 975.96, 810.60, 738.34, 701.25, 688.99, 686.58, 649.11, 605.68, 542.61, 441.08, 430.22, 420.24, 308.22]
 ```
 
-Poverty comparison: still to do. It needs PSA's regional poverty incidence table, which has to be downloaded by hand (psa.gov.ph blocks scripts).
+Next to poverty: PSA's poverty incidence among families (share of families below the poverty line), 2023 and 2025, from `1_2025 Full Year Official Poverty Statistics_30Oct2026_rev.xlsx` (PSA, table 1). Regions are sorted poorest first.
+
+| Region | Aid per affected family (PHP) | Poor families 2023 | 2025 |
+|---|---|---|---|
+| BARMM | 308 | 26.0% | 12.8% |
+| NIR | 2,199 | 22.6% | 14.3% |
+| Zamboanga Peninsula | 420 | 22.5% | 9.8% |
+| Bicol Region | 991 | 20.3% | 16.8% |
+| Eastern Visayas | 441 | 20.3% | 12.8% |
+| Northern Mindanao | 1,600 | 18.4% | 14.4% |
+| SOCCSKSARGEN | 606 | 17.0% | 9.6% |
+| MIMAROPA Region | 1,017 | 16.3% | 11.3% |
+| Caraga | 976 | 14.9% | 7.8% |
+| Central Visayas | 1,595 | 12.3% | 8.7% |
+| Davao Region | 430 | 11.3% | 5.5% |
+| Western Visayas | 543 | 9.8% | 5.2% |
+| Ilocos Region | 687 | 8.4% | 4.0% |
+| Cagayan Valley | 701 | 7.2% | 4.4% |
+| Central Luzon | 649 | 5.7% | 1.9% |
+| CALABARZON | 738 | 5.3% | 2.7% |
+| CAR | 811 | 4.4% | 2.7% |
+| NCR | 689 | 1.1% | 0.6% |
+
+Aid per family does not follow poverty (rank correlation -0.05 across 18 regions; 0 = no relation, +1 = the poorest regions always get the most). The four poorest regions in 2023 (BARMM, NIR, Zamboanga Peninsula, Bicol Region) are spread across the aid ranking. Aid depends on many things this table does not show: storm strength, how long people stayed in ECs, prices and when the event happened. Treat this as a description, not a judgement.
 
 ## 5. What share of a town's people is affected?
 
@@ -136,3 +159,4 @@ Early reports are a floor, not an estimate: anyone using a first-week report (fo
 
 ---
 Source: DSWD DROMIC situation reports. Cleaned by sakuna. Not an official DSWD product.
+Population (2024 census) and poverty statistics: Philippine Statistics Authority (PSA).
