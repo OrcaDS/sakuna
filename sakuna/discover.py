@@ -148,3 +148,35 @@ def discover(settings: Settings, years: list[int]) -> list[dict]:
                 {"event_url": url, "event_title": title, "event_year": year, **f} for f in files
             ]
     return rows
+
+
+def unseen(found: list[dict], known: list[dict]) -> list[dict]:
+    """Discovered files whose (event, file) pair is not in `known` (a manifest or report_files)."""
+    seen = {(r["event_url"], r["file_url"]) for r in known}
+    out = []
+    for f in found:
+        key = (f["event_url"], f["file_url"])
+        if key not in seen:
+            seen.add(key)
+            out.append(f)
+    return out
+
+
+def new_reports_markdown(new: list[dict]) -> str:
+    """Issue body listing new files (public DROMIC titles and links only)."""
+    lines = [
+        f"{len(new)} report file(s) on DROMIC are not in the latest release.",
+        "",
+        "To update: `uv run sakuna update` on the PC with the raw files, check the "
+        "`sum_check` warning count, then publish a release.",
+        "",
+        "| Event | Report | Date |",
+        "|---|---|---|",
+    ]
+    for f in sorted(new, key=lambda f: (f["event_title"], f["report_date"])):
+        label = f["label"].replace("|", "/") or "file"
+        lines.append(
+            f"| [{f['event_title']}]({f['event_url']}) | [{label}]({f['file_url']}) "
+            f"| {f['report_date']} |"
+        )
+    return "\n".join(lines) + "\n"

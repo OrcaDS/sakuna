@@ -1,0 +1,39 @@
+name: Check DROMIC for new reports
+
+# Daily: list DROMIC's report files, compare with the latest release's report_files.csv and
+# open (or update) one issue if any are new. Downloads no reports: raw files stay on Kurt's PC.
+on:
+  schedule:
+    - cron: "0 0 * * *" # 08:00 Philippine time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.5"
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Known report files from the latest release
+        run: gh release download --pattern report_files.csv --dir known
+      - name: Check DROMIC
+        run: uv run sakuna check --known known/report_files.csv --out new_reports.md
+      - name: Open or update the issue
+        if: hashFiles('new_reports.md') != ''
+        run: |
+          gh label create new-reports --color FBCA04 --description "New DROMIC reports" --force
+          n=$(gh issue list --label new-reports --state open --json number --jq '.[0].number')
+          if [ -n "$n" ]; then
+            gh issue edit "$n" --body-file new_reports.md
+          else
+            gh issue create --title "New DROMIC reports to add" --label new-reports --body-file new_reports.md
+          fi

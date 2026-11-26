@@ -61,6 +61,9 @@ uv run sakuna extract      # number tables → lake/bronze/
 uv run sakuna psgc data/<PSGC xlsx>   # PSA's PSGC file (download by hand from psa.gov.ph)
 uv run dbt build --project-dir transform --profiles-dir transform   # silver + gold → lake/sakuna.duckdb
 uv run sakuna export       # gold → release/ (CSV + Parquet + docs + checksums)
+uv run sakuna update       # all of the above except psgc, in one go
 ```
+
+A GitHub Action checks DROMIC daily and opens a `new-reports` issue when report files appear that are not in the latest release's `report_files.csv`. It downloads no reports; updates are built locally with `sakuna update` and published as a new release.
 
 Raw report files stay on your machine (`raw/` is git-ignored) and are never published.
