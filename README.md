@@ -64,6 +64,6 @@ uv run sakuna export       # gold → release/ (CSV + Parquet + docs + checksums
 uv run sakuna update       # all of the above except psgc, in one go
 ```
 
-A GitHub Action checks DROMIC daily and opens a `new-reports` issue when report files appear that are not in the latest release's `report_files.csv`. It downloads no reports; updates are built locally with `sakuna update` and published as a new release.
+A daily check (`scripts/daily_check.ps1`, run by Windows Task Scheduler on the maintainer's PC) opens a `new-reports` issue when report files appear on DROMIC that are not in the latest release's `report_files.csv`. It runs locally because DROMIC does not answer requests from GitHub's servers. It downloads no reports; updates are built with `sakuna update` and published as a new release.
 
 Raw report files stay on your machine (`raw/` is git-ignored) and are never published.
