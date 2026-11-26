@@ -17,6 +17,7 @@ build/
 raw/
 lake/
 data/
+release/
 *.pdf
 *.docx
 *.xlsx
