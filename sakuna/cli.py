@@ -7,7 +7,7 @@ import logging
 from datetime import date
 from pathlib import Path
 
-from sakuna import discover, download, extract, manifest, psgc
+from sakuna import discover, download, export, extract, manifest, psgc
 from sakuna.settings import load_settings
 
 logger = logging.getLogger("sakuna")
@@ -27,6 +27,8 @@ def main(argv: list[str] | None = None) -> int:
     ex.add_argument("--limit", type=int, help="extract at most this many files")
     ps = sub.add_parser("psgc", help="turn PSA's PSGC .xlsx into transform/seeds/psgc.csv")
     ps.add_argument("xlsx", type=Path, help="PSGC publication datafile downloaded from psa.gov.ph")
+    rel = sub.add_parser("export", help="write gold tables as CSV + Parquet for a release")
+    rel.add_argument("--out", type=Path, default=Path("release"), help="output folder")
     args = parser.parse_args(argv)
 
     settings = load_settings()
@@ -51,6 +53,9 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "psgc":
         out = Path("transform/seeds/psgc.csv")
         logger.info("%d places → %s", psgc.write_seed(args.xlsx, out), out)
+    elif args.command == "export":
+        counts = export.export(settings.lake_root / "sakuna.duckdb", args.out)
+        logger.info("exported %d tables to %s", len(counts), args.out)
     return 0
 
 
