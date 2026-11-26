@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import subprocess
 from datetime import date
 from pathlib import Path
 
@@ -29,6 +30,11 @@ def main(argv: list[str] | None = None) -> int:
     ps.add_argument("xlsx", type=Path, help="PSGC publication datafile downloaded from psa.gov.ph")
     rel = sub.add_parser("export", help="write gold tables as CSV + Parquet for a release")
     rel.add_argument("--out", type=Path, default=Path("release"), help="output folder")
+    ck = sub.add_parser("check", help="list DROMIC report files not in a known file list")
+    ck.add_argument("--known", type=Path, required=True, help="report_files.csv or manifest.csv")
+    ck.add_argument("--out", type=Path, help="write an issue body here if anything is new")
+    up = sub.add_parser("update", help="discover, download, extract, dbt build, export")
+    up.add_argument("--refresh", action="store_true", help="also re-check downloaded files")
     args = parser.parse_args(argv)
 
     settings = load_settings()
@@ -37,8 +43,7 @@ def main(argv: list[str] | None = None) -> int:
         for field, value in vars(settings).items():
             logger.info("%s = %s", field, value)
     elif args.command == "discover":
-        # Category 2016 holds early-2017 events (Auring, 07 Jan 2017).
-        found = discover.discover(settings, list(range(2016, date.today().year + 1)))
+        found = _discover_all(settings)
         path = manifest.manifest_path(settings.raw_root)
         rows = manifest.read(path)
         added = manifest.merge(rows, found, download.now())
@@ -54,9 +59,35 @@ def main(argv: list[str] | None = None) -> int:
         out = Path("transform/seeds/psgc.csv")
         logger.info("%d places → %s", psgc.write_seed(args.xlsx, out), out)
     elif args.command == "export":
-        counts = export.export(settings.lake_root / "sakuna.duckdb", args.out)
+        counts = export.export(
+            settings.lake_root / "sakuna.duckdb",
+            args.out,
+            manifest=manifest.manifest_path(settings.raw_root),
+        )
         logger.info("exported %d tables to %s", len(counts), args.out)
+    elif args.command == "check":
+        new = discover.unseen(_discover_all(settings), manifest.read(args.known))
+        logger.info("%d new report files", len(new))
+        for f in new:
+            logger.info("new: %s | %s", f["event_title"], f["file_url"])
+        if new and args.out:
+            args.out.write_text(discover.new_reports_markdown(new), encoding="utf-8")
+    elif args.command == "update":
+        main(["discover"])
+        main(["download", *(["--refresh"] if args.refresh else [])])
+        main(["extract"])
+        # Own process: in-process dbt keeps the DuckDB file open and export can't reopen it.
+        build = ["dbt", "build", "--project-dir", "transform", "--profiles-dir", "transform"]
+        if subprocess.run(build, check=False).returncode != 0:
+            logger.error("dbt build failed; nothing exported")
+            return 1
+        main(["export"])
     return 0
+
+
+def _discover_all(settings) -> list[dict]:
+    # Category 2016 holds early-2017 events (Auring, 07 Jan 2017).
+    return discover.discover(settings, list(range(2016, date.today().year + 1)))
 
 
 if __name__ == "__main__":

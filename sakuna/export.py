@@ -6,6 +6,7 @@ reports, so they are written as integers; costs (PHP) keep two decimals.
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import logging
 import shutil
@@ -29,6 +30,9 @@ TABLES = {
 }
 GZIP_CSV = {"impacts_by_report"}  # ~420 MB as plain CSV; gzip brings it to a download size
 DOCS = ("docs/data_dictionary.md", "docs/known_gaps.md")
+# Manifest columns published as report_files.csv: every file DROMIC lists, read or not. The
+# scheduled check (`sakuna check`) compares DROMIC against it. URLs and DSWD file names only.
+REPORT_FILE_FIELDS = ["event_url", "file_url", "label", "report_date", "status", "sha256"]
 
 
 def _select(con: duckdb.DuckDBPyConnection, table: str) -> str:
@@ -50,8 +54,10 @@ def _select(con: duckdb.DuckDBPyConnection, table: str) -> str:
     return f"select {', '.join(parts)} from {table} order by {TABLES[table]}"
 
 
-def export(db_path: Path, out_dir: Path, docs_root: Path = Path(".")) -> dict[str, int]:
-    """Write every gold table to out_dir; return row counts per table."""
+def export(
+    db_path: Path, out_dir: Path, docs_root: Path = Path("."), manifest: Path | None = None
+) -> dict[str, int]:
+    """Write every gold table (and the manifest's file list) to out_dir; return row counts."""
     if not db_path.exists():
         raise FileNotFoundError(f"{db_path} not found: run dbt build first")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -65,6 +71,8 @@ def export(db_path: Path, out_dir: Path, docs_root: Path = Path(".")) -> dict[st
                 con.execute(f"copy ({query}) to '{path}' ({opts})")
             counts[table] = con.execute(f"select count(*) from {table}").fetchall()[0][0]
             logger.info("%s: %d rows", table, counts[table])
+    if manifest is not None:
+        counts["report_files"] = _write_report_files(manifest, out_dir / "report_files.csv")
     for doc in DOCS:
         src = docs_root / doc
         if src.exists():
@@ -73,6 +81,17 @@ def export(db_path: Path, out_dir: Path, docs_root: Path = Path(".")) -> dict[st
             logger.warning("%s missing; not copied", src)
     _write_checksums(out_dir)
     return counts
+
+
+def _write_report_files(manifest: Path, out: Path) -> int:
+    with manifest.open(newline="", encoding="utf-8") as f:
+        rows = sorted(csv.DictReader(f), key=lambda r: (r["event_url"], r["file_url"]))
+    with out.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=REPORT_FILE_FIELDS, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
+    logger.info("report_files: %d rows", len(rows))
+    return len(rows)
 
 
 def _write_checksums(out_dir: Path) -> None:

@@ -14,6 +14,7 @@ Source: DSWD DROMIC situation reports. Cleaned by sakuna. Not an official DSWD p
 | `reports` | report file | Which reports exist for an event, links to the originals. |
 | `impacts_by_report` | event × report × place | How numbers changed from report to report (e.g. how long evacuation centres stayed open). Every level: total, region, province, town. |
 | `unmatched_places` | town spelling | Town names we could not match to an official place code. |
+| `report_files` | file listed on DROMIC | Every report file we know of, including ones we could not download or did not read (CSV only). |
 
 Every table comes as CSV (`impacts_by_report` as `.csv.gz`, which most tools read directly) and as Parquet. `SHA256SUMS` lets you check the downloads (`sha256sum -c SHA256SUMS`).
 
@@ -121,3 +122,16 @@ Do not add up all rows of a report: totals, regions, provinces and towns overlap
 | dswd_name | DSWD's spelling. |
 | n_events | Events that list it. |
 | example_event_id, example_source_url | One report where it appears. |
+
+## report_files
+
+CSV only. Every report file listed on an event's DROMIC page, whether or not it made it into the tables above. The daily check compares DROMIC against this list to spot new reports.
+
+| Column | Meaning |
+|---|---|
+| event_url | The event's DROMIC page. |
+| file_url | Link to the report file as listed on that page. |
+| label | DSWD's file name or link text. |
+| report_date | Date in the file name, if any. |
+| status | `ok` downloaded; `failed` dead link or not a report file; `manual` Google Drive file that robots.txt keeps scripts from downloading. Preparedness reports are `ok` but not read (they come before impacts). |
+| sha256 | Fingerprint of the downloaded file; matches `reports.sha256`. |

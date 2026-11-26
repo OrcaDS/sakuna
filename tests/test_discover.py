@@ -2,7 +2,15 @@
 
 import pytest
 
-from sakuna.discover import is_event, label_fields, last_date, parse_listing, parse_post
+from sakuna.discover import (
+    is_event,
+    label_fields,
+    last_date,
+    new_reports_markdown,
+    parse_listing,
+    parse_post,
+    unseen,
+)
 
 LISTING = """
 <h2 class="post-title" itemprop="name"><a href="https://dromic.dswd.gov.ph/a/" rel="bookmark">
@@ -71,3 +79,35 @@ def test_label_fields_unknown_stays_empty():
 def test_last_date():
     assert str(last_date("Typhoon Nina [23 Dec 2016] as of 05 Jan 2017")) == "2017-01-05"
     assert last_date("no date 31 Feb 2017") is None
+
+
+def test_unseen_keeps_only_new_event_file_pairs_once():
+    known = [{"event_url": "e1", "file_url": "f1", "status": "failed"}]
+    found = [
+        {"event_url": "e1", "file_url": "f1"},  # known, even though it failed
+        {"event_url": "e1", "file_url": "f2"},
+        {"event_url": "e1", "file_url": "f2"},  # listed twice on the post
+        {"event_url": "e2", "file_url": "f1"},  # same file under another event is new
+    ]
+    assert [(f["event_url"], f["file_url"]) for f in unseen(found, known)] == [
+        ("e1", "f2"),
+        ("e2", "f1"),
+    ]
+
+
+def test_new_reports_markdown_lists_links():
+    body = new_reports_markdown(
+        [
+            {
+                "event_title": "TS Ada [15 Jan 2026]",
+                "event_url": "https://x/ada/",
+                "label": "Report #1 | 6PM",
+                "file_url": "https://x/r1.pdf",
+                "report_date": "2026-01-15",
+            }
+        ]
+    )
+    assert body.startswith("1 report file(s)")
+    assert (
+        "| [TS Ada [15 Jan 2026]](https://x/ada/) | [Report #1 / 6PM](https://x/r1.pdf) |" in body
+    )

@@ -72,3 +72,20 @@ def test_export_writes_tables_types_and_checksums(db, tmp_path):
 def test_export_without_database_fails(tmp_path):
     with pytest.raises(FileNotFoundError, match="dbt build"):
         export.export(tmp_path / "missing.duckdb", tmp_path / "out")
+
+
+def test_export_writes_report_files_from_manifest(db, tmp_path):
+    manifest = tmp_path / "manifest.csv"
+    manifest.write_text(
+        "event_url,file_url,label,report_date,status,sha256,local_path\n"
+        "e2,f1,Report 1,2026-01-15,ok,abc,e2/abc.pdf\n"
+        "e1,f9,Report 9,,failed,,\n",
+        encoding="utf-8",
+    )
+    counts = export.export(db, tmp_path / "out", docs_root=tmp_path, manifest=manifest)
+
+    assert counts["report_files"] == 2
+    with open(tmp_path / "out" / "report_files.csv", newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    assert [r["event_url"] for r in rows] == ["e1", "e2"]  # sorted
+    assert list(rows[0]) == export.REPORT_FILE_FIELDS  # no local paths published
