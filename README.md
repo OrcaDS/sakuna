@@ -26,6 +26,8 @@ Read these before using the numbers:
 - [Data dictionary](docs/data_dictionary.md): every column, and which file to use.
 - [Known gaps](docs/known_gaps.md): missing events and reports, and where town rows differ from DSWD's totals.
 
+What the data shows: [insights](docs/insights.md) (repeat-hit towns, storms ranked, time to empty evacuation centres, aid per family, share of towns affected, how much early reports undercount).
+
 ## Privacy
 
 This dataset is built from public DSWD DROMIC situation reports. We extract only aggregate counts per region, province and municipality/city. We do not collect, store for publication or share any names or other personal details that appear in the source reports. Original report files are kept privately, only so we can re-check numbers when DSWD revises a report. Contact: open a GitHub issue.
