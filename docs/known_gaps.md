@@ -43,6 +43,8 @@ For 123 of 128 events, the sum of town rows is within 1% of DSWD's own GRAND TOT
 
 Smaller mismatches between towns, provinces and regions inside a report are DSWD's own (for example, some reports count highly urbanised cities in the province total and others only in the region total). We keep DSWD's numbers as they are.
 
+In about 7% of event × town rows, DSWD's affected persons are higher than the town's 2024 census population (for example Mariveles, Bataan, 2023: 335,487 affected, 156,200 residents). These are DSWD's figures; see [insights](insights.md#5-what-share-of-a-towns-people-is-affected).
+
 ## Cost of assistance
 
 Town cost totals are often lower than DSWD's national cost. Some aid goes to provincial governments (PLGU) or is given only as a province figure, not per town. Those lines are in `impacts_by_report` with `level = 'other'`. Tisoy 2019's Region II cost row repeats one town's figure.
