@@ -1,4 +1,6 @@
-# sakuna
+# Philippine Typhoon and Monsoon Impacts by Town (2017–now)
+
+_Built with **sakuna**, the open-source pipeline in this repository. sakuna is the pipeline's name, not the dataset's._
 
 The first open, town-by-town history of every Philippine typhoon and monsoon event since 2017, rebuilt from DSWD's own situation reports: affected families and persons, displaced people, damaged houses and cost of assistance.
 
